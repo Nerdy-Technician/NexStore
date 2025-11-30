@@ -1,0 +1,44 @@
+name: Generate NTINDEX
+
+on:
+  push:
+    branches: [main]
+    paths: ['nexterm/scripts/**', 'nexterm/snippets/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate NTINDEX
+        run: |
+          cd nexterm
+          echo "# Scripts" > NTINDEX
+          for file in scripts/*; do
+            if [ -f "$file" ]; then
+              hash=$(md5sum "$file" | cut -d' ' -f1)
+              echo "${file}@${hash}" >> NTINDEX
+            fi
+          done
+          echo "" >> NTINDEX
+          echo "# Snippets" >> NTINDEX
+          for file in snippets/*; do
+            if [ -f "$file" ]; then
+              hash=$(md5sum "$file" | cut -d' ' -f1)
+              echo "${file}@${hash}" >> NTINDEX
+            fi
+          done
+
+      - name: Commit NTINDEX
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add nexterm/NTINDEX
+          git diff --staged --quiet || git commit -m "chore: update NTINDEX"
+          git push
