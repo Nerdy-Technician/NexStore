@@ -1,5 +1,9 @@
 # Scripts
 scripts/000easteregg.sh@729547dd65ff0eaa389d8af888aadfcd
 scripts/10_largest_files.sh@416971fdb24f74464841958621d4940c
+scripts/Check - Docker Service.sh@022ff935ae7d899dd756354c37e93a50
+scripts/Collect - SSH Port.sh@4e71694de2fd3d9db700d48f3b846790
+scripts/Security - SSH Root Access.sh@20341165feb057dbaf2e48b67f2afcb4
+scripts/Security - UFW Status.sh@88bc06c3078f6c11d3b34cdc20cd37d1
 
 # Snippets
