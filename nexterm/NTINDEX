@@ -7,3 +7,4 @@ scripts/Security - SSH Root Access.sh@20341165feb057dbaf2e48b67f2afcb4
 scripts/Security - UFW Status.sh@88bc06c3078f6c11d3b34cdc20cd37d1
 
 # Snippets
+snippets/APT-Update.sh@1d808c71bf56d77c1a30cde77a89b713
