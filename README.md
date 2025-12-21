@@ -1,11 +1,11 @@
-# NexStore  
+# NerdyStore  
 Storefront for Nexploy apps and Nexterm scripts/snippets
 
 
 
-## 🛍️ What is NexStore?
+## 🛍️ What is NerdyStore?
 
-**NexStore** is the official storefront of the **Nexploy ecosystem**, providing a centralized, user-friendly hub for discovering:
+**NerdyStore** is the official storefront of the **Nexploy ecosystem**, providing a centralized, user-friendly hub for discovering:
 
 - 📦 **Nexploy Apps**  
 - 🧩 **Nexterm Scripts & Snippets**  
@@ -50,6 +50,6 @@ Contributions are welcome!
 ## 🔗 Useful Links
 
 - **Nexterm Documentation**: https://docs.nexterm.dev  
-- **Report a bug**: https://github.com/gnmyt/Nexstore/issues  
-- **Request a feature**: https://github.com/gnmyt/Nexstore/issues  
+- **Report a bug**: https://github.com/gnmyt/NerdyStore/issues  
+- **Request a feature**: https://github.com/gnmyt/NerdyStore/issues  
 - **Discord community**: https://dc.gnmyt.dev  
