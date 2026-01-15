@@ -1,44 +1,14 @@
-name: Auto-Release on Push
+name: Release on Version Update
 
 on:
   push:
     branches:
       - main
-      - develop
     paths:
-      - 'nexterm/scripts/**'
-      - 'nexterm/snippets/**'
       - '.github/VERSION'
 
 jobs:
-  check-version:
-    runs-on: ubuntu-latest
-    outputs:
-      new_version: ${{ steps.version.outputs.version }}
-      should_release: ${{ steps.version.outputs.should_release }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get current version
-        id: version
-        run: |
-          VERSION=$(grep '^VERSION=' .github/VERSION | cut -d'=' -f2)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          
-          # Check if tag exists for this version
-          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-            echo "should_release=false" >> $GITHUB_OUTPUT
-          else
-            echo "should_release=true" >> $GITHUB_OUTPUT
-          fi
-
-  auto-release:
-    needs: check-version
-    if: needs.check-version.outputs.should_release == 'true'
+  release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -49,16 +19,100 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create and push tag
+      - name: Read VERSION file
+        id: version_info
         run: |
-          VERSION=${{ needs.check-version.outputs.new_version }}
+          VERSION=$(grep '^VERSION=' .github/VERSION | cut -d'=' -f2)
+          RELEASE_DATE=$(grep '^RELEASE_DATE=' .github/VERSION | cut -d'=' -f2)
+          BUILD_NUMBER=$(grep '^BUILD_NUMBER=' .github/VERSION | cut -d'=' -f2)
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "release_date=$RELEASE_DATE" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          
+          # Check if tag exists
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          # Extract everything after CHANGELOG= line
+          CHANGELOG=$(sed -n '/^CHANGELOG=/,$p' .github/VERSION | sed '1d')
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create release archive
+        id: archive
+        run: |
+          VERSION=${{ steps.version_info.outputs.version }}
+          RELEASE_DIR="nerdystore-$VERSION"
+          ARCHIVE_FILE="nerdystore-$VERSION.zip"
+          
+          mkdir -p "$RELEASE_DIR"
+          cp -r nexterm/scripts "$RELEASE_DIR/" 2>/dev/null || true
+          cp -r nexterm/snippets "$RELEASE_DIR/" 2>/dev/null || true
+          cp README.md "$RELEASE_DIR/" 2>/dev/null || true
+          
+          zip -r "$ARCHIVE_FILE" "$RELEASE_DIR/"
+          echo "archive=$ARCHIVE_FILE" >> $GITHUB_OUTPUT
+          
+          SCRIPTS=$(ls -1 nexterm/scripts/ 2>/dev/null | wc -l)
+          SNIPPETS=$(ls -1 nexterm/snippets/ 2>/dev/null | wc -l)
+          echo "scripts=$SCRIPTS" >> $GITHUB_OUTPUT
+          echo "snippets=$SNIPPETS" >> $GITHUB_OUTPUT
+          
+          sha256sum "$ARCHIVE_FILE" > "$ARCHIVE_FILE.sha256"
+
+      - name: Create git tag
+        if: steps.version_info.outputs.tag_exists == 'false'
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git tag -a "v$VERSION" -m "Auto-release: v$VERSION"
-          git push origin "v$VERSION"
+          git tag -a "v${{ steps.version_info.outputs.version }}" -m "Release v${{ steps.version_info.outputs.version }}"
+          git push origin "v${{ steps.version_info.outputs.version }}"
 
-      - name: Trigger release workflow
-        run: |
-          echo "✅ Tag v${{ needs.check-version.outputs.new_version }} created and pushed"
-          echo "📦 Release workflow will be triggered automatically"
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ steps.version_info.outputs.version }}
+          name: "NerdyStore Release v${{ steps.version_info.outputs.version }}"
+          makeLatest: true
+          allowUpdates: true
+          body: |
+            # NerdyStore Release v${{ steps.version_info.outputs.version }}
+
+            **Release Date:** ${{ steps.version_info.outputs.release_date }}
+            **Build:** #${{ steps.version_info.outputs.build_number }}
+
+            ## Contents
+            - 📦 **Scripts:** ${{ steps.archive.outputs.scripts }}
+            - 🔧 **Snippets:** ${{ steps.archive.outputs.snippets }}
+
+            ## Changes
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Installation
+            ```bash
+            unzip ${{ steps.archive.outputs.archive }}
+            cd nerdystore-${{ steps.version_info.outputs.version }}
+            chmod +x nexterm/scripts/*.sh
+            ```
+
+            ## Verification
+            ```bash
+            sha256sum -c ${{ steps.archive.outputs.archive }}.sha256
+            ```
+
+            ---
+            *Automatically generated by GitHub Actions*
+
+          artifacts: "${{ steps.archive.outputs.archive }},${{ steps.archive.outputs.archive }}.sha256"
+          artifactErrorsFailBuild: true
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
