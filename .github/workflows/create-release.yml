@@ -51,15 +51,11 @@ jobs:
           PREV_TAG=$(git tag --list --sort=-v:refname | grep -v "^v${{ steps.tag_version.outputs.version }}$" | head -1)
           echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
 
-      - name: Generate changelog
+      - name: Read changelog from VERSION file
         id: changelog
         run: |
-          PREV_TAG=${{ steps.prev_tag.outputs.prev_tag }}
-          if [ -z "$PREV_TAG" ]; then
-            CHANGELOG=$(git log --oneline | head -20)
-          else
-            CHANGELOG=$(git log "$PREV_TAG"..HEAD --oneline)
-          fi
+          # Extract changelog from .github/VERSION file
+          CHANGELOG=$(sed -n '/^CHANGELOG=/,/^[A-Z]/p' .github/VERSION | sed '1d;$d' | sed 's/^CHANGELOG=//')
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -76,7 +72,7 @@ jobs:
             - 📦 **Scripts:** ${{ steps.archive.outputs.scripts }}
             - 🔧 **Snippets:** ${{ steps.archive.outputs.snippets }}
 
-            ## Recent Changes
+            ## Changes
             ```
             ${{ steps.changelog.outputs.changelog }}
             ```
