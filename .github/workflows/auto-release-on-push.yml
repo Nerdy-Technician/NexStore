@@ -1,0 +1,64 @@
+name: Auto-Release on Push
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'nexterm/scripts/**'
+      - 'nexterm/snippets/**'
+      - '.github/VERSION'
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.version.outputs.version }}
+      should_release: ${{ steps.version.outputs.should_release }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: version
+        run: |
+          VERSION=$(grep '^VERSION=' .github/VERSION | cut -d'=' -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Check if tag exists for this version
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          fi
+
+  auto-release:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create and push tag
+        run: |
+          VERSION=${{ needs.check-version.outputs.new_version }}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git tag -a "v$VERSION" -m "Auto-release: v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Trigger release workflow
+        run: |
+          echo "✅ Tag v${{ needs.check-version.outputs.new_version }} created and pushed"
+          echo "📦 Release workflow will be triggered automatically"
